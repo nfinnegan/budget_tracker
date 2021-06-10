@@ -1,8 +1,7 @@
 let db;
-let budgetVersion;
 
 //Create a new db request for a 'budget' database. requesting db instance
-const request = indexedDB.open("BudgetDB", budgetVersion || 2);
+const request = indexedDB.open("BudgetDB", 3);
 
 //Create schema
 request.onupgradeneeded = (ev) => {
@@ -21,15 +20,32 @@ request.onupgradeneeded = (ev) => {
   }
 };
 
+//on success console log the result
+request.onsuccess = (ev) => {
+  console.log("success");
+  db = ev.target.result;
+  console.log(db);
+
+  //check if application is online before reading from db
+  if (navigator.onLine) {
+    console.log("backend is online");
+    checkDatabase();
+  }
+};
+
+//error handling
+request.onerror = (ev) => {
+  console.log(`Woops! ${ev.target.errorCode}`);
+};
+
 //checking indexeddb to see if there are any values to be added to main db once network is back online
 const checkDatabase = () => {
   console.log("check db invoked");
 
   //Open a transaction to the BudgetStore
-  let transaction = db.transaction(["BudgetStore"], "readwrite");
+  const transaction = db.transaction(["BudgetStore"], "readwrite");
 
   // access your BudgetStore object
-
   const store = transaction.objectStore("BudgetStore");
 
   //Get All records from store and set to a variable
@@ -41,7 +57,7 @@ const checkDatabase = () => {
     if (getAll.result.length > 0) {
       fetch("/api/transaction/bulk", {
         method: "POST",
-        body: JSON.stringify(getAll.results),
+        body: JSON.stringify(getAll.result),
         headers: {
           Accept: "application/json, text/plain, */*",
           "Content-Type": "application/json",
@@ -52,31 +68,18 @@ const checkDatabase = () => {
           //if our returned response is not empty
           if (res.length !== 0) {
             //Open another transaction to BudgetStore with the ability to read and write
-            transaction = db.transaction(["BudgetStore"], "readwrite");
+            const transaction = db.transaction(["BudgetStore"], "readwrite");
 
             //Assign the current store to the variable
-            const currentStore = transaction.objectStore("BudgetStore");
+            const store = transaction.objectStore("BudgetStore");
 
             //Clear the existing entries because our bulk add was successful
-            currentStore.clear();
+            store.clear();
             console.log("Clearing store");
           }
         });
     }
   };
-};
-
-//on success console log the result
-request.onsuccess = (ev) => {
-  console.log("success");
-  db = ev.target.result;
-  console.log(db);
-
-  //check if application is online before reading from db
-  if (navigator.onLine) {
-    console.log("backend is online");
-    // checkDB();
-  }
 };
 
 const saveRecord = (record) => {
@@ -89,11 +92,6 @@ const saveRecord = (record) => {
 
   //add record to your store with add method
   store.add(record);
-};
-
-//error handling
-request.onerror = (ev) => {
-  console.log(`Woops! ${ev.target.errorCode}`);
 };
 
 // Listen for app coming back online
