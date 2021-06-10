@@ -2,7 +2,7 @@ let db;
 let budgetVersion;
 
 //Create a new db request for a 'budget' database. requesting db instance
-const request = indexedDB.open("BudgetDB", budgetVersion || 1);
+const request = indexedDB.open("BudgetDB", budgetVersion || 2);
 
 //Create schema
 request.onupgradeneeded = (ev) => {
